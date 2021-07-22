@@ -1,0 +1,554 @@
+on unload:
+    send "&a&lVINE&2&lPR &8¬ &7Unloading &a%script%" to all players where [input has permission "staff.alerts"]
+    set {skript.loadtime::%script%} to now
+
+on load:
+    wait 1 tick
+    set {_loadtime} to difference between {skript.loadtime::%script%} and now
+    send "&a&lVINE&2&lPR &8¬ &7Loaded &a%script%&7. &8(&f%{_loadtime}%&8)" to all players where [input has permission "staff.alerts"]
+
+
+# ------------[ CONFIGURATION ]------------ #
+
+options:
+
+    # MESSAGES CONFIGURATION
+    message_prefix: &a&lVINE&2&lPR &8¬&7
+    message_borders: &8&m                                                &r
+
+    # COLORS CONFIGURATION
+    color_first: &7
+    color_second: &a
+    color_third: &2
+    color_fourth: &8
+    color_error: &c
+
+    # ERRORS CONFIIGURATION
+    # Use <arg> for the permission, correct usage, or incorrect type. <type> for the "error_not_correct_type"
+    error_no_permission: &r%nl%&c&l(!) &cI can't let you do that!%nl%&c&l(!) &cMissing Permission: &a<arg>&r%nl%
+    error_not_player: &r%nl%&c&l(!) &cOnly players can execute this command!&r%nl%
+    error_wrong_usage: &r%nl%&c&l(!) &cIncorrect Usage!%nl%&c&l(!) &cCorrect Usage: &a<arg>&r%nl%
+    error_not_correct_type: &r%nl%&c&l(!) &a<arg> &cisn't the required type! &8(&a<type>&8)&r%nl%
+
+    # ALERTS CONFIGURATION
+    # Use <script> for the skript file, And <reload_time> for the reloaded time.
+    alerts_reload_enabled: true
+    alerts_reload_message: &r%nl%&c&l(!) &a<script>.sk &7reloaded in &a<reload_time>!%nl%&r
+    alerts_reloading_enabled: true
+    alerts_reloading_message: &r%nl%&c&l(!) &a<script>.sk &7is being reloaded! This may cause lag.%nl%&r
+
+    # GUI ITEMS CONFIGURATION
+    # Here you can set the items used in GUIs.
+    filler: gray stained glass pane named ""
+
+    # LAG PROTECTION CONFIGURATION
+    # These options are for the "algorithm" that should hopefully reduce lag caused by this Skript.
+    low_lag_protection: 0.1 + ((20 - tps from the last minute) / 4) * 2 # These are used for code that generally isn't intensive, So you can leave it at pretty low numbers.
+    medium_lag_protection: 1.5 + ((20 - tps from the last minute) / 2) * 2 # These are used for code that are kind of intensive, Like hologram reloading, Loops, And what not.
+    high_lag_protection: 3 + (20 - tps from the last minute) * 2 # These are used for code that are what I think, really intensive, Like setting a lot of blocks, Or just in simple codes, YANDEREDEV CODE TYPE SHIT
+# ------------[ CONFIGURATION ]------------ #
+
+function ResetMine(mine: text):
+    set {mines::times::%{_mine}%::a} to now
+    set {mines::times::%{_mine}%::started} to now
+    set {_av} to {mines::times::%{_mine}%::total::reset}/{mines::times::%{_mine}%::reset::reset}
+    if {_av} isn't set:
+        set {_av} to "UNKNOWN"
+    loop all players:
+        "%bound at loop-player%" contains "mines_%{_mine}%"
+        teleport loop-player to {mines::spawnlocs::%{_mine}%}
+    Lib_Broadcast("%nl%{@message_prefix} The mine &a%{_mine}% &7is preparing to reset! &8(&aAverage: %{_av}%&a seconds&8)")
+    loop all blocks within bound with id "mines_%{_mine}%":
+        add 1 to {_totalblocks}
+        if tps from the last minute <= 10:
+            while tps from the last minute <= 10:
+                Lib_Broadcast("%nl%{@message_prefix} The checking of mine &a%{_mine}% &7has been paused as the tps is under 10!")
+                wait 1 minute
+        if loop-block is air:
+            add 1 to {_resettableblocks}
+            set {_resettableblockslocs::%location of loop-block%} to location of loop-block
+            set {_chance} to {@low_lag_protection}
+            chance of {_chance}%:
+                wait ("%round(1 + (20 - tps from the last minute)) / 1% ticks" parsed as an timespan) ? 1 tick
+    send "%nl%{@message_prefix} The mine &a%{_mine}% &7has checked all the blocks, starting to fill the mine! &8(&aBlocks to reset: %{_resettableblocks} ? 0%&8 /&a Blocks checked: %{_totalblocks} ? 0%&8)"  to all players where [input has permission "staff.alerts"]
+    loop {_resettableblockslocs::*}:
+        if y-coord of loop-value = y-coord of {mines::created_mines::%{_mine}%::region::1}:
+            if z-coord of loop-value = z-coord of {mines::created_mines::%{_mine}%::region::1}:
+                set {_a} to random element out of {mines::created_mines::%{_mine}%::blocks::*}
+                set {_block} to {_a} parsed as item type
+                set block at loop-value-1 to {_block}
+                wait 0.5 second
+        if tps from the last minute <= 10:
+            while tps from the last minute <= 10:
+                Lib_Broadcast("%nl%{@message_prefix} The resetting of mine &a%{_mine}% &7has been paused as the tps is under 10!")
+                wait 1 minute
+        while block at loop-value-1 is air:
+            set {_a} to random element out of {mines::created_mines::%{_mine}%::blocks::*}
+            set {_block} to {_a} parsed as item type
+            set block at loop-value-1 to {_block}
+    Lib_Broadcast("%nl%{@message_prefix} The mine &a%{_mine}% &7has reset &a%{_resettableblocks} ? 0%&7 blocks in &a%difference between now and {mines::times::%{_mine}%::started}%!")
+    set {_time} to difference between now and {mines::times::%{_mine}%::started}
+    set {_time} to "%{_time}%"
+    replace all "seconds" and "second" with "" in {_time}
+    replace all "minutes" and "minute" with "" in {_time}
+    replace all " " with "" in {_time}
+    set {_time} to {_time} parsed as number
+    add {_time} to {mines::times::%{_mine}%::total::reset}
+    add 1 to {mines::times::%{_mine}%::reset::reset}
+
+function InstaResetMine(mine: text):
+    loop all players:
+        "%bound at loop-player%" contains "mines_%{_mine}%"
+        teleport loop-player to {mines::spawnlocs::%{_mine}%}
+    Lib_Broadcast("%nl%{@message_prefix} The mine &a%{_mine}% &7is preparing to reset!")
+    loop all blocks within bound with id "mines_%{_mine}%":
+        if tps from the last minute <= 10:
+            while tps from the last minute <= 10:
+                Lib_Broadcast("%nl%{@message_prefix} The checking of mine &a%{_mine}% &7has been paused as the tps is under 10!")
+                wait 1 minute
+        while block at loop-block is air:
+            set {_a} to random element out of {mines::created_mines::%{_mine}%::blocks::*}
+            set {_block} to {_a} parsed as item type
+            set block at loop-block to {_block}
+    Lib_Broadcast("%nl%{@message_prefix} The mine &a%{_mine}% &7has reset!")
+
+function EmptyMine(mine: text):
+    set {mines::times::%{_mine}%::a} to now
+    set {mines::times::%{_mine}%::started} to now
+    loop all players:
+        "%bound at loop-player%" contains "mines_%{_mine}%"
+        teleport loop-player to {mines::spawnlocs::%{_mine}%}
+    set {_av} to {mines::times::%{_mine}%::total::empty}/{mines::times::%{_mine}%::reset::empty}
+    if {_av} isn't set:
+        set {_av} to "UNKNOWN"
+    Lib_Broadcast("%nl%{@message_prefix} The mine &a%{_mine}% &7is preparing to empty! &8(&aAverage: %{_av}%&a seconds&8)")
+    loop all blocks within bound with id "mines_%{_mine}%":
+        add 1 to {_totalblocks}
+        if tps from the last minute <= 10:
+            while tps from the last minute <= 10:
+                Lib_Broadcast("%nl%{@message_prefix} The emptying of mine &a%{_mine}% &7has been paused as the tps is under 10!")
+                wait 1 minute
+        if loop-block isn't air:
+            add 1 to {_resettableblocks}
+            set {_resettableblockslocs::%location of loop-block%} to location of loop-block
+            set {_chance} to {@low_lag_protection}
+            chance of {_chance}%:
+                wait ("%round(1 + (20 - tps from the last minute)) / 1% ticks" parsed as an timespan) ? 1 tick
+    send "%nl%{@message_prefix} The mine &a%{_mine}% &7has checked all the blocks, starting to empty the mine! &8(&aBlocks to replace: %{_resettableblocks} ? 0%&8 /&a Blocks checked: %{_totalblocks} ? 0%&8)"  to all players where [input has permission "staff.alerts"]
+    loop {_resettableblockslocs::*}:
+        if y-coord of loop-value = y-coord of {mines::created_mines::%{_mine}%::region::1}:
+            if z-coord of loop-value = z-coord of {mines::created_mines::%{_mine}%::region::1}:
+                set block at loop-value-1 to air
+                wait 0.5 second
+        if tps from the last minute <= 10:
+            while tps from the last minute <= 10:
+                Lib_Broadcast("%nl%{@message_prefix} The emptying of mine &a%{_mine}% &7has been paused as the tps is under 10!")
+                wait 1 minute
+        while block at loop-value-1 isn't air:
+            set block at loop-value-1 to air
+    Lib_Broadcast("%nl%{@message_prefix} The mine &a%{_mine}% &7has emptied &a%{_resettableblocks} ? 0%&7 blocks in &a%difference between now and {mines::times::%{_mine}%::started}%!")
+    set {_time} to difference between now and {mines::times::%{_mine}%::started}
+    set {_time} to "%{_time}%"
+    replace all "seconds" and "second" with "" in {_time}
+    replace all "minutes" and "minute" with "" in {_time}
+    replace all " " with "" in {_time}
+    set {_time} to {_time} parsed as number
+    add {_time} to {mines::times::%{_mine}%::total::empty}
+    add 1 to {mines::times::%{_mine}%::reset::empty}
+
+function ForceMine(mine: text):
+    set {mines::times::%{_mine}%::a} to now
+    set {mines::times::%{_mine}%::started} to now
+    loop all players:
+        "%bound at loop-player%" contains "mines_%{_mine}%"
+        teleport loop-player to {mines::spawnlocs::%{_mine}%}
+    set {_av} to {mines::times::%{_mine}%::total::force}/{mines::times::%{_mine}%::reset::force}
+    if {_av} isn't set:
+        set {_av} to "UNKNOWN"
+    Lib_Broadcast("%nl%{@message_prefix} The mine &a%{_mine}% &7is preparing to force reset! &8(&aAverage: %{_av}%&a seconds&8)")
+    loop all blocks within bound with id "mines_%{_mine}%":
+        add 1 to {_totalblocks}
+        if tps from the last minute <= 10:
+            while tps from the last minute <= 10:
+                Lib_Broadcast("%nl%{@message_prefix} The emptying of mine &a%{_mine}% &7has been paused as the tps is under 10!")
+                wait 1 minute
+        set {_chance} to {@low_lag_protection}
+        chance of {_chance}%:
+            wait ("%round(1 + (20 - tps from the last minute)) / 1% ticks" parsed as an timespan) ? 1 tick
+    send "%nl%{@message_prefix} The mine &a%{_mine}% &7has checked all the blocks, starting to force reset the mine! &8(&aBlocks to replace: %{_totalblocks} ? 0%&8)"  to all players where [input has permission "staff.alerts"]
+    loop all blocks within bound with id "mines_%{_mine}%":
+        if y-coord of loop-block = y-coord of {mines::created_mines::%{_mine}%::region::1}:
+            if z-coord of loop-block = z-coord of {mines::created_mines::%{_mine}%::region::1}:
+                set {_a} to random element out of {mines::created_mines::%{_mine}%::blocks::*}
+                set {_block} to {_a} parsed as item type
+                set block at loop-block to {_block}
+                wait 0.5 second
+        if tps from the last minute <= 10:
+            while tps from the last minute <= 10:
+                Lib_Broadcast("%nl%{@message_prefix} The emptying of mine &a%{_mine}% &7has been paused as the tps is under 10!")
+                wait 1 minute
+        set {_a} to random element out of {mines::created_mines::%{_mine}%::blocks::*}
+        set {_block} to {_a} parsed as item type
+        set block at loop-block to {_block}
+    Lib_Broadcast("%nl%{@message_prefix} The mine &a%{_mine}% &7has force resetted &a%{_totalblocks} ? 0%&7 blocks in &a%difference between now and {mines::times::%{_mine}%::started}%!")
+    set {_time} to difference between now and {mines::times::%{_mine}%::started}
+    set {_time} to "%{_time}%"
+    replace all "seconds" and "second" with "" in {_time}
+    replace all "minutes" and "minute" with "" in {_time}
+    replace all " " with "" in {_time}
+    set {_time} to {_time} parsed as number
+    add {_time} to {mines::times::%{_mine}%::total::force}
+    add 1 to {mines::times::%{_mine}%::reset::force}
+
+function OpenRemovePanel(p: player, m: text):
+    set {_uuid} to uuid of {_p}
+    create a gui with virtual chest named "&8&l%{_m}% &8&lREMOVE PANEL" with size 6:
+        make gui slot (integers between 0 and 100) to gray stained glass pane named "&7"
+        loop {mines::created_mines::%{_m}%::blocks::*}:
+            if {_a::%loop-value%} isn't set:
+                set {_a::%loop-value%} to loop-value
+            set {_c} to -1
+        loop {_a::*}:
+            loop {mines::created_mines::%{_m}%::blocks::*}:
+                if loop-value-1 = loop-value-2:
+                    add 1 to {_chance::%loop-value-1%}
+        loop {_a::*}:
+            set {_block} to loop-value parsed as item type
+            delete {temp::%{_uuid}%::%loop-value%}
+            set {temp::%{_uuid}%} to {_block}
+            add 1 to {_c}
+            make gui slot {_c} to {_block} named "&7%{_block}%" with lore "" and "&7This block has a &a%{_chance::%loop-value%}%%%&7 to spawn if the total is &a100%%&7!":
+                set {_blocks::*} to {mines::created_mines::%{_m}%::blocks::*}
+                delete {mines::created_mines::%{_m}%::blocks::*}
+                loop {_blocks::*}:
+                    set {_q} to loop-value-2 parsed as item type
+                    if {_q} isn't {_block}:
+                        add "%loop-value-2%" to {mines::created_mines::%{_m}%::blocks::*}
+                OpenRemovePanel({_p}, {_m})
+    open last gui to {_p}
+
+function ViewPanel(p: player, m: text):
+    set {_uuid} to uuid of {_p}
+    create a gui with virtual chest named "&8&l%{_m}%&8&l's blocks" with size 6:
+        make gui slot (integers between 0 and 100) to gray stained glass pane named "&7"
+        loop {mines::created_mines::%{_m}%::blocks::*}:
+            if {_a::%loop-value%} isn't set:
+                set {_a::%loop-value%} to loop-value
+            set {_c} to -1
+        loop {_a::*}:
+            loop {mines::created_mines::%{_m}%::blocks::*}:
+                if loop-value-1 = loop-value-2:
+                    add 1 to {_chance::%loop-value-1%}
+        loop {_a::*}:
+            set {_block} to loop-value parsed as item type
+            add 1 to {_c}
+            make gui slot {_c} to {_block} named "&7%{_block}%" with lore "" and "&7This block has a &a%{_chance::%loop-value%}%%%&7 to spawn if the total is &a100%%&7!"
+    open last gui to {_p}
+
+command /mines [<text>] [<text>]:
+    trigger:
+        if arg 1 is "reset":
+            if player isn't op:
+                send "{@message_prefix}&c No permission!"
+                stop
+            if {mines::created_mines::%arg 2%} isn't set:
+                send "{@message_prefix}&c There's no mine with that name!"
+                stop
+            if {mines::created_mines::%arg 2%::region::1} isn't set:
+                send "{@message_prefix}&c %arg 2%&c's mine doesn't have a region!"
+                stop
+            if {mines::created_mines::%arg 2%::region::2} isn't set:
+                send "{@message_prefix}&c %arg 2%&c's mine doesn't have a region!"
+                stop
+            if {mines::created_mines::%arg 2%::blocks::*} isn't set:
+                send "{@message_prefix}&c %arg 2%&c's mine doesn't contain any blocks!"
+                stop
+            ResetMine(arg 2)
+        else if arg 1 is "empty":
+            if player isn't op:
+                send "{@message_prefix}&c No permission!"
+                stop
+            if {mines::created_mines::%arg 2%} isn't set:
+                send "{@message_prefix}&c There's no mine with that name!"
+                stop
+            if {mines::created_mines::%arg 2%::region::1} isn't set:
+                send "{@message_prefix}&c %arg 2%&c's mine doesn't have a region!"
+                stop
+            if {mines::created_mines::%arg 2%::region::2} isn't set:
+                send "{@message_prefix}&c %arg 2%&c's mine doesn't have a region!"
+                stop
+            EmptyMine(arg 2)
+        else if arg 1 is "setspawn":
+            if player isn't op:
+                send "{@message_prefix}&c No permission!"
+                stop
+            if {mines::created_mines::%arg 2%} isn't set:
+                send "{@message_prefix}&c There's no mine with that name!"
+                stop
+            set {mines::spawnlocs::%arg 2%} to player's location
+            send "{@message_prefix} You set the &a%arg 2%&7 spawn location to %player's location%&7!"
+        else if arg 1 is "teleport":
+            if {mines::created_mines::%arg 2%} isn't set:
+                send "{@message_prefix}&c There's no mine with that name!"
+                stop
+            if player doesn't have permission "mines.%arg 2%":
+                send "{@message_prefix}&c You do not have access to this mine yet!"
+                stop
+            teleport player to {mines::spawnlocs::%arg 2%}
+            send "{@message_prefix}&7 You've been teleported to the &a%arg 2%&7 mine!"
+        else if arg 1 is "make":
+            if player isn't op:
+                send "{@message_prefix}&c No permission!"
+                stop
+            arg 2 is set
+            set {_color} to arg 2 parsed as color
+            Lib_Broadcast("%nl%{@message_prefix} &cWARNING&7%nl%&7Creating a mine layout, this WILL cause lag!%nl%")
+            load structure "DefaultMine" at player
+            set {_pos1} to player's location
+            set {_pos2} to player's location
+            add {mines::x} to x-coord of {_pos2}
+            add {mines::y} to y-coord of {_pos2}
+            add {mines::z} to z-coord of {_pos2}
+            wait 4 seconds
+            loop all blocks within {_pos1} and {_pos2}:
+                #set {_chance} to {@low_lag_protection}
+                #chance of {_chance}%:
+                    #wait ("%round(1 + (20 - tps from the last minute)) / 1% ticks" parsed as an timespan) ? 1 tick
+                if loop-block is green stained glass, green carpet, green terracotta or green concrete powder:
+                    set {_block} to "%loop-block%"
+                    replace all "dark " and "light " with "" in {_block}
+                    replace all "green" with "%arg 2%" in {_block}
+                    set {_block} to {_block} parsed as item type
+                    set block at loop-block's location to {_block}
+            add 100000 to y-coord of {_pos2}
+            create bound with id "mine_side_%{mines::id}+1%" between {_pos1} and {_pos2}
+            add 1 to x-coord of {_pos2}
+            add 1 to z-coord of {_pos2}
+            add 1 to {mines::id}
+        else if arg 1 is "schem":
+            if player isn't op:
+                send "{@message_prefix}&c No permission!"
+                stop
+            if {mines::tempData::%uuid of player%::schem::region::1} isn't set:
+                send "{@message_prefix}&c You gotta make a region first!"
+                stop
+            if {mines::tempData::%uuid of player%::schem::region::2} isn't set:
+                send "{@message_prefix}&c You gotta make a region first!"
+                stop
+            save structure between {mines::tempData::%uuid of player%::schem::region::1} and {mines::tempData::%uuid of player%::schem::region::2} as "DefaultMine"
+            set {mines::x} to x-coord of {mines::tempData::%uuid of player%::schem::region::2} - x-coord of {mines::tempData::%uuid of player%::schem::region::1}
+            set {mines::x} to x-coord of {mines::tempData::%uuid of player%::schem::region::1} - x-coord of {mines::tempData::%uuid of player%::schem::region::2} if {mines::x} < 0
+            set {mines::y} to y-coord of {mines::tempData::%uuid of player%::schem::region::2} - y-coord of {mines::tempData::%uuid of player%::schem::region::1}
+            set {mines::y} to y-coord of {mines::tempData::%uuid of player%::schem::region::1} - y-coord of {mines::tempData::%uuid of player%::schem::region::2} if {mines::y} < 0
+            set {mines::z} to z-coord of {mines::tempData::%uuid of player%::schem::region::2} - z-coord of {mines::tempData::%uuid of player%::schem::region::1}
+            set {mines::z} to z-coord of {mines::tempData::%uuid of player%::schem::region::1} - z-coord of {mines::tempData::%uuid of player%::schem::region::2} if {mines::z} < 0
+            send "{@message_prefix} You saved the mine structure between &a%{mines::tempData::%uuid of player%::schem::region::1}% &7and &a%{mines::tempData::%uuid of player%::schem::region::2}%&7!"
+        else if arg 1 is "schemwand":
+            if player isn't op:
+                send "{@message_prefix}&c No permission!"
+                stop
+            give 1 of shiny bamboo named "&a&l&nREGION WAND" with nbt "{REGIONWANDMINE:""%player%""}" to player
+            send "{@message_prefix} You've received the&a mine region wand!"
+        else if arg 1 is "forcereset":
+            if player isn't op:
+                send "{@message_prefix}&c No permission!"
+                stop
+            if {mines::created_mines::%arg 2%} isn't set:
+                send "{@message_prefix}&c There's no mine with that name!"
+                stop
+            if {mines::created_mines::%arg 2%::region::1} isn't set:
+                send "{@message_prefix}&c %arg 2%&c's mine doesn't have a region!"
+                stop
+            if {mines::created_mines::%arg 2%::region::2} isn't set:
+                send "{@message_prefix}&c %arg 2%&c's mine doesn't have a region!"
+                stop
+            ForceMine(arg 2)
+        else if arg 1 is "delete":
+            if player isn't op:
+                send "{@message_prefix}&c No permission!"
+                stop
+            if {mines::created_mines::%arg 2%} isn't set:
+                send "{@message_prefix}&c There's no mine with that name!"
+                stop
+            delete {mines::created_mines::%arg 2%::*}
+            delete {mines::created_mines::%arg 2%}
+            delete bound with id "mines_%arg 2%"
+            send "{@message_prefix}&c Succesfully&c removed the mine %arg 2%&c!"
+        else if arg 1 is "panel":
+            if player isn't op:
+                send "{@message_prefix}&c No permission!"
+                stop
+            if {mines::created_mines::%arg 2%} isn't set:
+                send "{@message_prefix}&c There's no mine with that name!"
+                stop
+            set {mines::setup::%uuid of player%::name} to arg 2
+            create a gui with virtual chest named "&8&l%arg 2% PANEL" with size 5:
+                make gui slot (integers between 0 and 100) to gray stained glass pane named "&7"
+                make gui slot 10 to ender chest named "&aAdd item" with lore "", "&7Click me to add blocks to the %arg 2%&7 mine!" and "":
+                    close player's inventory
+                    send "{@message_prefix} Right click with an item to add it!"
+                    set {mines::additem::%uuid of player%::item} to true
+                make gui slot 12 to anvil named "&aRemove item" with lore "", "&7Click me to remove blocks from the %{mines::setup::%uuid of player%::name}%&7 mine!" and "":
+                    OpenRemovePanel(player, {mines::setup::%uuid of player%::name})
+                make gui slot 14 to beacon named "&aReset mine" with lore "", "&7Click me to reset the %{mines::setup::%uuid of player%::name}%&7 mine!" and "":
+                    close player's inventory
+                    player command "/mines reset %{mines::setup::%uuid of player%::name}%"
+                make gui slot 24 to barrier named "&c&lDELETE MINE" with lore "", "&7Click me to delete the %{mines::setup::%uuid of player%::name}%&7 mine!", "&c&lTHIS CANNOT BE UNDONE" and "":
+                    player command "/mines delete %{mines::setup::%uuid of player%::name}%"
+                    close player's inventory
+                make gui slot 16 to light blue dye named "&aEmpty mine" with lore "", "&7Click me to empty the %{mines::setup::%uuid of player%::name}%&7 mine!" and "":
+                    player command "/mines empty %{mines::setup::%uuid of player%::name}%"
+                    close player's inventory
+                make gui slot 20 to oak sign named "&aView the blocks" with lore "", "&7Click me to empty the %{mines::setup::%uuid of player%::name}%&7 mine!" and "":
+                    ViewPanel(player, {mines::setup::%uuid of player%::name})
+                make gui slot 22 to tnt named "&aForce reset" with lore "", "&7Click me to force reset the %{mines::setup::%uuid of player%::name}%&7 mine!" and "":
+                    player command "/mines forcereset %{mines::setup::%uuid of player%::name}%"
+                    close player's inventory
+                make gui slot 22 to feather named "&aMine reset speed" with lore "", "&7Click me to change the reset speed of the %{mines::setup::%uuid of player%::name}%&7 mine!" and "":
+                    send "&7Please type a &atimespan in the chat!"
+                    close player's inventory
+            open last gui to player
+        else if arg 1 is "create":
+            if player isn't op:
+                send "{@message_prefix}&c No permission!"
+                stop
+            arg 2 is set
+            if {mines::created_mines::%arg 2%} is set:
+                send "{@message_prefix}&c There's already a mine with that name!"
+                stop
+            set {mines::created_mines::%arg 2%} to arg 2
+            send "{@message_prefix} &7Succesfully added &a%arg 2%&7 to the mine list, to add blocks do &a/mines panel %arg 2%&7!"
+        else if arg 1 is "wand":
+            if player isn't op:
+                send "{@message_prefix}&c No permission!"
+                stop
+            give 1 of shiny bamboo named "&a&l&nMINE REGION WAND" with nbt "{REGIONWAND:""%player%""}" to player
+            send "{@message_prefix} You've received the&a mine region wand!"
+        else if arg 1 is "setregion":
+            if player isn't op:
+                send "{@message_prefix}&c No permission!"
+                stop
+            if {mines::created_mines::%arg 2%} isn't set:
+                send "{@message_prefix}&c There's no mine with that name!"
+                stop
+            if {mines::tempData::%uuid of player%::region::1} isn't set:
+                send "{@message_prefix}&c You gotta make a region first!"
+                stop
+            if {mines::tempData::%uuid of player%::region::2} isn't set:
+                send "{@message_prefix}&c You gotta make a region first!"
+                stop
+            delete bound with id "mines_%arg 2%"
+            create bound with id "mines_%arg 2%" between {mines::tempData::%uuid of player%::region::1} and {mines::tempData::%uuid of player%::region::2}
+            set {mines::created_mines::%arg 2%::region::1} to {mines::tempData::%uuid of player%::region::1}
+            set {mines::created_mines::%arg 2%::region::2} to {mines::tempData::%uuid of player%::region::2}
+            send "{@message_prefix} You set &a%arg 2%&7's region to the blocks between &a%{mines::created_mines::%arg 2%::region::1}% &7and &a%{mines::created_mines::%arg 2%::region::2}%&7!"
+            delete {mines::tempData::%uuid of player%::region::*}
+        else:
+            send ""
+            send "&a⬛&a⬛&a⬛&a⬛&a⬛ &7⬛&7⬛&a⬛&7⬛&7⬛ &a⬛&a⬛&a⬛&7⬛&a⬛ &a⬛&a⬛&a⬛&a⬛&a⬛ &a⬛&a⬛&a⬛&a⬛&a⬛"
+            send "&a⬛&7⬛&a⬛&7⬛&a⬛ &7⬛&7⬛&7⬛&7⬛&7⬛ &a⬛&7⬛&a⬛&7⬛&a⬛ &a⬛&7⬛&7⬛&7⬛&7⬛ &a⬛&7⬛&7⬛&7⬛&7⬛"
+            send "&a⬛&7⬛&a⬛&7⬛&a⬛ &7⬛&7⬛&a⬛&7⬛&7⬛ &a⬛&7⬛&a⬛&7⬛&a⬛ &a⬛&a⬛&a⬛&a⬛&a⬛ &a⬛&a⬛&a⬛&a⬛&a⬛"
+            send "&a⬛&7⬛&a⬛&7⬛&a⬛ &7⬛&7⬛&a⬛&7⬛&7⬛ &a⬛&7⬛&a⬛&7⬛&a⬛ &a⬛&7⬛&7⬛&7⬛&7⬛ &7⬛&7⬛&7⬛&7⬛&a⬛"
+            send "&a⬛&7⬛&a⬛&7⬛&a⬛ &7⬛&7⬛&a⬛&7⬛&7⬛ &a⬛&7⬛&a⬛&a⬛&a⬛ &a⬛&a⬛&a⬛&a⬛&a⬛ &a⬛&a⬛&a⬛&a⬛&a⬛"
+            send ""
+            send "&a/mines&7 - main command"
+            send "&a/mines setspawn (mine)&7 - Sets the spawn where the player teleports to"
+            send "&a/mines reset (mine)&7 - Resets a mine with the given name"
+            send "&a/mines create (mine)&7 - Creates a mine with the given name"
+            send "&a/mines delete (mine)&7 - Deletes a mine with the given name"
+            send "&a/mines setregion (mine)&7 - Sets the region of mine with the given name"
+            send "&a/mines panel (mine)&7 - Add/remove blocks to/from a mine with the given name"
+            send "&a/mines empty (mine)&7 - Empties a mine completely"
+            send "&a/mines forcereset (mine)&7 - Forces a mine to reset ALL the blocks"
+            send "&a/mines wand&7 - Gives you the region wand"
+            send ""
+            send "&aMade by ThiboIsWeird aka Thibo##0002 with love <3"
+            send ""
+
+function Lib_Broadcast(msg: string):
+    loop all players:
+        Lib_PlaySound(loop-player, "BLOCK_NOTE_BLOCK_PLING", 0.9)
+        send {_msg} to loop-player
+        
+function Lib_PlaySound(plr: player, sound: string, pitch: number):
+    {_sound} != "none"
+    play sound {_sound} at pitch {_pitch} to {_plr}
+
+on right click:
+    if {mines::additem::%uuid of player%::item} is true:
+        player's tool isn't air
+        set {mines::setup::%uuid of player%::item} to type of tool of player
+        set {mines::setup::%uuid of player%::item} to {mines::setup::%uuid of player%::item} parsed as item type
+        delete {mines::additem::%uuid of player%::item}
+        set {mines::additem::%uuid of player%::chance} to true
+        cancel event
+        send "{@message_prefix} Now type the chance for the block to spawn in chat!"
+
+on left click with bamboo:
+    set {_wand_owner} to "REGIONWAND" tag of nbt of player's tool
+    if {_wand_owner} is "%player%":
+        cancel event
+        targeted block != air
+        set {mines::tempData::%uuid of player%::region::1} to location of targeted block if distance between player and targeted block <= 5
+        send "{@message_prefix} You've set the 1st position to &a%location of targeted block%&7!" if distance between player and targeted block <= 5
+        send "{@message_prefix} You're to far away!" if distance between player and targeted block > 5
+
+on right click with bamboo:
+    set {_wand_owner} to "REGIONWAND" tag of nbt of player's tool
+    if {_wand_owner} is "%player%":
+        cancel event
+        targeted block != air
+        set {mines::tempData::%uuid of player%::region::2} to location of targeted block if distance between player and targeted block <= 5
+        send "{@message_prefix} You've set the 2nd position to &a%location of targeted block%&7!" if distance between player and targeted block <= 5
+        send "{@message_prefix} You're to far away!" if distance between player and targeted block > 5
+
+on left click with bamboo:
+    set {_wand_owner} to "REGIONWANDMINE" tag of nbt of player's tool
+    if {_wand_owner} is "%player%":
+        cancel event
+        targeted block != air
+        set {mines::tempData::%uuid of player%::schem::region::1} to location of targeted block if distance between player and targeted block <= 5
+        send "{@message_prefix} You've set the 1st position to &a%location of targeted block%&7!" if distance between player and targeted block <= 5
+        send "{@message_prefix} You're to far away!" if distance between player and targeted block > 5
+
+on right click with bamboo:
+    set {_wand_owner} to "REGIONWANDMINE" tag of nbt of player's tool
+    if {_wand_owner} is "%player%":
+        cancel event
+        targeted block != air
+        set {mines::tempData::%uuid of player%::schem::region::2} to location of targeted block if distance between player and targeted block <= 5
+        send "{@message_prefix} You've set the 2nd position to &a%location of targeted block%&7!" if distance between player and targeted block <= 5
+        send "{@message_prefix} You're to far away!" if distance between player and targeted block > 5
+
+on chat:
+    if {mines::additem::%uuid of player%::chance} is true:
+        set {_a} to message parsed as integer
+        cancel event
+        delete {mines::additem::%uuid of player%::chance}
+        if {_a} <= 100:
+            if size of {mines::created_mines::%{mines::setup::%uuid of player%::name}%::blocks::*} < 100:
+                if size of {mines::created_mines::%{mines::setup::%uuid of player%::name}%::blocks::*}+{_a} <= 100:
+                    set {mines::setup::%uuid of player%::chance} to {_a}
+                    send "{@message_prefix} You've succesfully added %{mines::setup::%uuid of player%::item}%&7 with chance %{_a}%&7 to your desired mine!"
+                    loop {_a} times:
+                        add "%{mines::setup::%uuid of player%::item}%" to {mines::created_mines::%{mines::setup::%uuid of player%::name}%::blocks::*}
+                else:
+                    send "{@message_prefix} {@color_error}That would be more than 100%% in total!"
+            else:
+                send "{@message_prefix} {@color_error}That would be more than 100%% in total!"
+        else:
+            send "{@message_prefix} {@color_error}That would be more than 100%% in total!"
+
+on tab complete of "/mines":
+    set tab completions for position 1 to "help", "empty", "panel", "create", "forcereset", "delete", "reset", "setspawn", "wand" and "setregion"
+    if tab arg-1 = "delete" or "reset" or "empty" or "setspawn" or "forcereset" or "setregion" or "panel":
+        set tab completions for position 2 to indices of {mines::created_mines::*}
+
+on bound exit:
+    set {_a} to player's location
+    if "%event-bound%" contains "mine_side_":
+        "%event-bound%" doesn't contain "mines"
+        set {_block} to block below player
+        "%bound at {_block}%" doesn't contain "mines"
+        player isn't op
+        cancel event
