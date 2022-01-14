@@ -39,11 +39,11 @@ command /skoreboard [<text>]:
                 send a request to "https://raw.githubusercontent.com/ThiboIsWeird/Skripts/main/Skript%%20Collections/SkoreBoard/Skript"
                 set {_resp} to the last http response
                 set {_skript} to {_resp}'s body
-                wait 2 ticks
-                create file path "plugins/Skript/scripts/%script%.sk" with text "%{_skript}%":
-                    send "{@name}&a Your skript has updated, reloading!"
-                    make player say "sk reload %script%"
-                    send "{@name}&2 Your skript is ready to go!"
+                delete file path "plugins/Skript/scripts/%script%.sk":
+                    create file path "plugins/Skript/scripts/%script%.sk" with text "%{_skript}%":
+                        send "{@name}&a Your skript has updated, reloading!"
+                        make player say "sk reload %script%"
+                        send "{@name}&2 Your skript is ready to go!"
                 stop
             send "{@name}&a Your skript is up to date."
             stop
