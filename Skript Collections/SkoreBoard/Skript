@@ -1,6 +1,6 @@
 options:
     name : &6SkoreBoards
-    version : 0.1
+    version : 0.2-BETA
 
 function send():
     send "" to console
@@ -28,12 +28,27 @@ on script load:
 
 command /skoreboard [<text>]:
     trigger:
+        if arg 1 is "check":
+            send a request to "https://raw.githubusercontent.com/ThiboIsWeird/Skripts/main/Skript%%20Collections/SkoreBoard/Version"
+            set {_resp} to the last http response
+            set {_ver} to {_resp}'s body
+            send "{@name} &bChecking versions."
+            wait 2 ticks
+            set {_ver} to first element of ({_ver} split at "%nl%")
+            if "%{_ver}%" isn't "{@version}":
+                send "{@name} &4Your skript is out of date!"
+                send "{@name} &4Your version: {@version}"
+                send "{@name} &4Updated version: %{_ver}%"
+                stop
+            send "{@name}&a Your skript is up to date."
+            stop
         if arg 1 is "update":
             send a request to "https://raw.githubusercontent.com/ThiboIsWeird/Skripts/main/Skript%%20Collections/SkoreBoard/Version"
             set {_resp} to the last http response
             set {_ver} to {_resp}'s body
             send "{@name} &bChecking versions."
             wait 2 ticks
+            set {_ver} to first element of ({_ver} split at "%nl%")
             if "%{_ver}%" isn't "{@version}":
                 send "{@name} &4Your skript is out of date, updating!"
                 send a request to "https://raw.githubusercontent.com/ThiboIsWeird/Skripts/main/Skript%%20Collections/SkoreBoard/Skript"
@@ -42,8 +57,9 @@ command /skoreboard [<text>]:
                 delete file path "plugins/Skript/scripts/%script%.sk":
                     create file path "plugins/Skript/scripts/%script%.sk" with text "%{_skript}%":
                         send "{@name}&a Your skript has updated, reloading!"
-                        make player say "sk reload %script%"
-                        send "{@name}&2 Your skript is ready to go!"
+                wait 1 second
+                player command "sk reload %script%"
+                send "{@name}&2 Your skript is ready to go!"
                 stop
             send "{@name}&a Your skript is up to date."
             stop
