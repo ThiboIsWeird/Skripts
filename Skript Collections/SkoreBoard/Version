@@ -1,1 +1,80 @@
-test
+options:
+    name : &6SkoreBoards
+    version : 0.1
+
+function send():
+    send "" to console
+    send "" to console
+    send "&6                SkoreBoards                 " to console
+    send "&c                Version &4{@version}             " to console
+    send "&c       Brought to you by &bThiboIsWeird       " to console
+    send "" to console
+    send "" to console
+
+on script load:
+    send a request to "https://raw.githubusercontent.com/ThiboIsWeird/Skripts/main/Skript%%20Collections/SkoreBoard/Version"
+    set {_resp} to the last http response
+    set {_ver} to {_resp}'s body
+    if "%{_ver}%" isn't "{@version}":
+        send "" to console
+        send "" to console
+        send "&6                SkoreBoards                 " to console
+        send "&c          Update to Version &4%{_ver}%             " to console
+        send "&c        Do /skoreboard update in-game         " to console
+        send "&c       Brought to you by &bThiboIsWeird       " to console
+        send "" to console
+        send "" to console
+    send()
+
+command /skoreboard [<text>]:
+    trigger:
+        if arg 1 is "update":
+            send a request to "https://raw.githubusercontent.com/ThiboIsWeird/Skripts/main/Skript%%20Collections/SkoreBoard/Version"
+            set {_resp} to the last http response
+            set {_ver} to {_resp}'s body
+            send "{@name} &bChecking versions."
+            wait 2 ticks
+            if "%{_ver}%" isn't "{@version}":
+                send "{@name} &4Your skript is out of date, updating!"
+                send a request to "https://raw.githubusercontent.com/ThiboIsWeird/Skripts/main/Skript%%20Collections/SkoreBoard/Skript"
+                set {_resp} to the last http response
+                set {_skript} to {_resp}'s body
+                wait 2 ticks
+                create file path "plugins/Skript/scripts/%script%.sk" with text "%{_skript}%":
+                    send "{@name}&a Your skript has updated, reloading!"
+                    make player say "sk reload %script%"
+                    send "{@name}&2 Your skript is ready to go!"
+                stop
+            send "{@name}&a Your skript is up to date."
+            stop
+
+
+on script load:
+    if file path "plugins/Skript/SKoreBoard/boards.yml" is missing:
+        send "" to console
+        send "" to console
+        send "&6                SkoreBoards                 " to console
+        send "&4               [SMALL ERROR]                " to console
+        send "&4     The boards.yml file doesn't exist.     " to console
+        send "&4          Generating default file.          " to console
+        send "" to console
+        send "" to console
+        create file path "plugins/Skript/SKoreBoard/boards.yml" with text "##---------------------------------------------##", "##           Skoreboards In Skript!            ##", "##         Follow the example below to         ##", "##       Brought to you by ThiboIsWeird        ##", "##---------------------------------------------##", "boards:", "  default:", "    title: &eHeyo", "    slot: 15", "    item: loom named ""Testing!""", "    lines:",  "      - &7", "      - &6SKoreboard!" and "      - &8"
+    load yaml "plugins/Skript/SKoreBoard/boards.yml" as "boards"
+
+function test(p: player, sb: string="default"):
+    clear scoreboard of {_p}
+    set {_uuid} to uuid of {_p}
+    toggle scoreboard of {_p} on
+    load yaml "plugins/Skript/SKoreBoard/boards.yml" as "boards"
+    set {_lines::*} to yml list "boards.%{_sb}%.lines" from "boards"
+    set {_title} to yml value "boards.%{_sb}%.title" from "boards"
+    set title of {_p}'s scoreboard to "%{_title}%"
+    set {_backup::*} to "<##9b9ec7>", "&f" and "&7"
+    set {_color::*} to {settings::scoreboard::%{_uuid}%::color::*}
+    set {_lines::*} to reversed {_lines::*}
+    loop {_lines::*}:
+        set {_line} to loop-value
+        loop {_color::*}:
+            replace "+sb_c%loop-index-2%+" with "%colored {_color::%loop-index-2%} ? {_backup::%loop-index-2%}%" in {_line}
+        set line ("%loop-index%" parsed as integer) of {_p}'s scoreboard to "%{_line}%"
