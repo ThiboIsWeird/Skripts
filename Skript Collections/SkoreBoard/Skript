@@ -1,6 +1,6 @@
 options:
     name : &6SkoreBoards
-    version : 0.2-BETA2
+    version : 0.2-BETA2.test
 
 function send():
     send "" to console
