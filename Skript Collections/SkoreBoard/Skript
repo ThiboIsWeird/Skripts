@@ -19,7 +19,7 @@ on script load:
         send "" to console
         send "" to console
         send "&6                SkoreBoards                 " to console
-        send "&c          Update to Version &4%{_ver}%             " to console
+        send "&c          Update to Version &4%{_ver}%            " to console
         send "&c        Do /skoreboard update in-game         " to console
         send "&c       Brought to you by &bThiboIsWeird       " to console
         send "" to console
@@ -36,9 +36,13 @@ command /skoreboard [<text>]:
             wait 2 ticks
             set {_ver} to first element of ({_ver} split at "%nl%")
             if "%{_ver}%" isn't "{@version}":
+                send a request to "https://raw.githubusercontent.com/ThiboIsWeird/Skripts/main/Skript%%20Collections/SkoreBoard/Changelog"
+                set {_resp} to the last http response
+                set {_changelog} to {_resp}'s body
                 send "{@name} &4Your skript is out of date!"
-                send "{@name} &4Your version: {@version}"
-                send "{@name} &4Updated version: %{_ver}%"
+                send "{@name} &4Your version: &c{@version}"
+                send "{@name} &4Updated version: &c%{_ver}%"
+                send "{@name} &4Updated version changelog: &c%{_changelog}%"
                 stop
             send "{@name}&a Your skript is up to date."
             stop
@@ -55,6 +59,7 @@ command /skoreboard [<text>]:
                 set {_resp} to the last http response
                 set {_skript} to {_resp}'s body
                 delete file path "plugins/Skript/scripts/%script%.sk":
+                    wait 1 tick
                     create file path "plugins/Skript/scripts/%script%.sk" with text "%{_skript}%":
                         send "{@name}&a Your skript has updated, reloading!"
                 wait 1 second
