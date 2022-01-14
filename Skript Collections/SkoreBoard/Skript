@@ -1,6 +1,6 @@
 options:
     name : &6SkoreBoards
-    version : 0.2-BETA
+    version : 0.2-BETA2
 
 function send():
     send "" to console
@@ -32,13 +32,13 @@ command /skoreboard [<text>]:
             send a request to "https://raw.githubusercontent.com/ThiboIsWeird/Skripts/main/Skript%%20Collections/SkoreBoard/Version"
             set {_resp} to the last http response
             set {_ver} to {_resp}'s body
+            send a request to "https://raw.githubusercontent.com/ThiboIsWeird/Skripts/main/Skript%%20Collections/SkoreBoard/Changelog"
+            set {_resp2} to the last http response
+            set {_changelog} to {_resp2}'s body
             send "{@name} &bChecking versions."
             wait 2 ticks
             set {_ver} to first element of ({_ver} split at "%nl%")
             if "%{_ver}%" isn't "{@version}":
-                send a request to "https://raw.githubusercontent.com/ThiboIsWeird/Skripts/main/Skript%%20Collections/SkoreBoard/Changelog"
-                set {_resp} to the last http response
-                set {_changelog} to {_resp}'s body
                 send "{@name} &4Your skript is out of date!"
                 send "{@name} &4Your version: &c{@version}"
                 send "{@name} &4Updated version: &c%{_ver}%"
@@ -83,8 +83,12 @@ on script load:
         create file path "plugins/Skript/SKoreBoard/boards.yml" with text "##---------------------------------------------##", "##           Skoreboards In Skript!            ##", "##         Follow the example below to         ##", "##       Brought to you by ThiboIsWeird        ##", "##---------------------------------------------##", "boards:", "  default:", "    title: &eHeyo", "    slot: 15", "    item: loom named ""Testing!""", "    lines:",  "      - &7", "      - &6SKoreboard!" and "      - &8"
     load yaml "plugins/Skript/SKoreBoard/boards.yml" as "boards"
 
+every 5 ticks:
+    loop all players:
+        test(loop-player)
+
 function test(p: player, sb: string="default"):
-    clear scoreboard of {_p}
+    #clear scoreboard of {_p}
     set {_uuid} to uuid of {_p}
     toggle scoreboard of {_p} on
     load yaml "plugins/Skript/SKoreBoard/boards.yml" as "boards"
@@ -96,6 +100,14 @@ function test(p: player, sb: string="default"):
     set {_lines::*} to reversed {_lines::*}
     loop {_lines::*}:
         set {_line} to loop-value
-        loop {_color::*}:
-            replace "+sb_c%loop-index-2%+" with "%colored {_color::%loop-index-2%} ? {_backup::%loop-index-2%}%" in {_line}
+        
+        if {_line} contains "\":
+            set {_l::*} to {_line} split at "\"
+            loop {_l::*}:
+                set {_varraw::*} to loop-value-2 split at " "
+                set {_varname} to {_varraw::1}
+                replace "\%{_varname}%" with "%{%{_varname}%::%{_uuid}%}%" in {_line}
+        replace all "+sb_c1+" with "%colored {_color::1}%" in {_line}
+        replace all "+sb_c2+" with "%colored {_color::2}%" in {_line}
+        replace all "+sb_c3+" with "%colored {_color::3}%" in {_line}
         set line ("%loop-index%" parsed as integer) of {_p}'s scoreboard to "%{_line}%"
